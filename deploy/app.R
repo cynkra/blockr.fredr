@@ -10,7 +10,7 @@ if (Sys.getenv("FRED_API_KEY") != "") {
 }
 
 # Lock the dashboard to prevent moving panels around
-options(blockr.dock_is_locked = TRUE)
+options(blockr.dock_is_locked = FALSE)
 
 # Serve the dashboard
 serve("dashboard.json")
