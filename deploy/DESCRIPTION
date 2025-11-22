@@ -1,0 +1,10 @@
+Type: Shiny
+Title: blockr.fredr Dashboard
+Imports:
+    blockr.core,
+    blockr,
+    fredr
+Remotes:
+    BristolMyersSquibb/blockr.core,
+    BristolMyersSquibb/blockr,
+    cynkra/blockr.fredr
