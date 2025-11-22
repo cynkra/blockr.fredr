@@ -1,10 +1,18 @@
 Type: Shiny
 Title: blockr.fredr Dashboard
 Imports:
+    shiny,
     blockr.core,
     blockr,
+    blockr.fredr,
+    blockr.ggplot,
+    blockr.dock,
+    blockr.dag,
     fredr
 Remotes:
     BristolMyersSquibb/blockr.core,
     BristolMyersSquibb/blockr,
+    BristolMyersSquibb/blockr.ggplot,
+    BristolMyersSquibb/blockr.dock,
+    BristolMyersSquibb/blockr.dag,
     cynkra/blockr.fredr
