@@ -1,0 +1,10 @@
+name: blockr-fredr-dashboard
+title:
+username: christophsax
+account: christophsax
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16144584
+bundleId:
+url: https://christophsax.shinyapps.io/blockr-fredr-dashboard/
+version: 1

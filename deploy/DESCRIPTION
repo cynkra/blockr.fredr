@@ -1,0 +1,24 @@
+Type: Shiny
+Title: blockr.fredr Dashboard
+Imports:
+    shiny,
+    blockr.core,
+    blockr,
+    blockr.fredr,
+    blockr.ggplot,
+    blockr.dock,
+    blockr.dag,
+    blockr.ui,
+    blockr.ai,
+    blockr.dplyr,
+    fredr
+Remotes:
+    cynkra/blockr.core,
+    cynkra/blockr,
+    cynkra/blockr.fredr,
+    cynkra/blockr.ggplot,
+    cynkra/blockr.dock,
+    cynkra/blockr.dag,
+    cynkra/blockr.ui,
+    cynkra/blockr.ai,
+    cynkra/blockr.dplyr
