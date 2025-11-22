@@ -6,6 +6,7 @@
 \usage{
 new_fred_block(
   series_id = "UNRATE",
+  tag = "switzerland",
   observation_start = NULL,
   observation_end = NULL,
   frequency = NULL,
@@ -16,6 +17,9 @@ new_fred_block(
 \arguments{
 \item{series_id}{FRED series ID (e.g., "UNRATE" for unemployment rate,
 "GDP" for gross domestic product, "CPIAUCSL" for consumer price index)}
+
+\item{tag}{FRED tag name for filtering available series (e.g., "switzerland",
+"euro area", "japan"). Defaults to "switzerland".}
 
 \item{observation_start, observation_end}{Optional date range for data retrieval.
 Defaults to last 10 years if not specified.}

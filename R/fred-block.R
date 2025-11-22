@@ -6,6 +6,8 @@
 #'
 #' @param series_id FRED series ID (e.g., "UNRATE" for unemployment rate,
 #'   "GDP" for gross domestic product, "CPIAUCSL" for consumer price index)
+#' @param tag FRED tag name for filtering available series (e.g., "switzerland",
+#'   "euro area", "japan"). Defaults to "switzerland".
 #' @param observation_start,observation_end Optional date range for data retrieval.
 #'   Defaults to last 10 years if not specified.
 #' @param frequency Optional frequency aggregation. One of: "d" (daily), "w" (weekly),
@@ -61,6 +63,7 @@
 #' @export
 new_fred_block <- function(
   series_id = "UNRATE",
+  tag = "switzerland",
   observation_start = NULL,
   observation_end = NULL,
   frequency = NULL,
@@ -107,19 +110,20 @@ new_fred_block <- function(
                 )
               ),
 
-              # Category filters
+              # FRED Tag selector
               div(
                 class = "block-input-wrapper",
-                checkboxGroupInput(
-                  inputId = NS(id, "categories"),
-                  label = "Data Categories",
+                selectInput(
+                  inputId = NS(id, "fred_tag"),
+                  label = "Data Source (FRED Tag)",
                   choices = c(
-                    "Global Key Indicators" = "global",
                     "Switzerland" = "switzerland",
-                    "United States" = "us"
+                    "United States" = "usa",
+                    "Euro Area" = "euro area",
+                    "OECD Countries" = "oecd"
                   ),
-                  selected = c("global", "switzerland"),  # Default: Global + Switzerland
-                  inline = TRUE
+                  selected = tag,
+                  width = "100%"
                 )
               ),
 
@@ -208,6 +212,7 @@ new_fred_block <- function(
       function(input, output, session) {
         # Initialize reactive values from constructor parameters
         r_series_id <- reactiveVal(series_id)
+        r_tag <- reactiveVal(tag)
         r_observation_start <- reactiveVal(observation_start)
         r_observation_end <- reactiveVal(observation_end)
         # Initialize frequency with "(none)" if NULL (for "Original")
@@ -217,6 +222,10 @@ new_fred_block <- function(
         # Sync inputs to reactive values
         observeEvent(input$series_id, {
           r_series_id(input$series_id)
+        })
+
+        observeEvent(input$fred_tag, {
+          r_tag(input$fred_tag)
         })
 
         observeEvent(input$dates, {
@@ -234,54 +243,120 @@ new_fred_block <- function(
           r_aggregation_method(input$aggregation_method)
         })
 
-        # Combine series data based on selected categories
+        # Load series metadata from parquet cache
         available_series <- reactive({
-          req(input$categories)
-
-          series_list <- list()
-
-          if ("global" %in% input$categories) {
-            series_list[[length(series_list) + 1]] <- fred_series_global
-          }
-          if ("switzerland" %in% input$categories) {
-            series_list[[length(series_list) + 1]] <- fred_series_switzerland
-          }
-          if ("us" %in% input$categories) {
-            series_list[[length(series_list) + 1]] <- fred_series_us
+          selected_tag <- input$fred_tag
+          if (is.null(selected_tag)) {
+            selected_tag <- tag  # Use constructor default
           }
 
-          if (length(series_list) == 0) {
-            return(data.frame(id = character(), title = character(), frequency = character()))
-          }
+          # Get path to parquet file
+          parquet_path <- system.file(
+            "extdata", "fred_metadata.parquet",
+            package = "blockr.fredr"
+          )
 
-          combined <- do.call(rbind, series_list)
-          combined[!duplicated(combined$id), ]
+          # Query with duckplyr - filter in duckdb before loading to memory
+          tryCatch({
+            duckplyr::read_parquet_duckdb(parquet_path) |>
+              dplyr::filter(tag == selected_tag) |>
+              dplyr::arrange(dplyr::desc(popularity)) |>
+              dplyr::collect() |>
+              as.data.frame()
+          }, error = function(e) {
+            # Return empty data frame on error
+            data.frame(
+              id = character(),
+              title = character(),
+              frequency = character(),
+              frequency_short = character(),
+              popularity = integer(),
+              seasonal_adjustment_short = character(),
+              tag = character(),
+              stringsAsFactors = FALSE
+            )
+          })
         })
 
-        # Update selectize choices when categories change (server-side mode)
+        # Update selectize choices when tag changes (server-side mode)
         observe({
-          # Get selected categories (default to global + switzerland if not set)
-          cats <- input$categories
-          if (is.null(cats)) {
-            cats <- c("global", "switzerland")
-          }
-
           series_data <- available_series()
 
-          # Create choices list for selectize (ID - Title format)
-          choices <- setNames(
-            series_data$id,
-            paste0(series_data$id, " - ", series_data$title)
-          )
+          # Only update if we have data
+          if (nrow(series_data) > 0) {
+            # Sort by popularity (descending) - most popular first
+            series_data <- series_data[order(-series_data$popularity), ]
 
-          # Update with server-side selectize
-          updateSelectizeInput(
-            session,
-            "series_id",
-            choices = choices,
-            selected = if (!is.null(series_id)) series_id else character(0),
-            server = TRUE
-          )
+            # Create choices list for selectize (ID - Title format)
+            choices <- setNames(
+              series_data$id,
+              paste0(series_data$id, " - ", series_data$title)
+            )
+
+            # Create options data with all metadata for custom rendering
+            choices_data <- lapply(seq_len(nrow(series_data)), function(i) {
+              list(
+                value = series_data$id[i],
+                label = paste0(series_data$id[i], " - ", series_data$title[i]),
+                frequency_short = series_data$frequency_short[i],
+                seasonal_adjustment = series_data$seasonal_adjustment_short[i],
+                popularity = series_data$popularity[i]
+              )
+            })
+
+            # Update with server-side selectize
+            updateSelectizeInput(
+              session,
+              "series_id",
+              choices = choices,
+              options = list(
+                options = choices_data,
+                valueField = "value",
+                labelField = "label",
+                searchField = c("label"),
+                render = I("{
+                  option: function(item, escape) {
+                    var parts = item.label.split(' - ');
+                    var id = parts[0];
+                    var title = parts.slice(1).join(' - ');
+
+                    // Build seasonal adjustment badge if applicable
+                    var saBadge = '';
+                    if (item.seasonal_adjustment === 'SA') {
+                      saBadge = '<span class=\"badge bg-success fred-sa-badge\">SA</span>';
+                    } else if (item.seasonal_adjustment === 'NSA') {
+                      saBadge = '<span class=\"badge bg-secondary fred-sa-badge\">NSA</span>';
+                    }
+
+                    // Build frequency display
+                    var freqText = item.frequency_short || 'N/A';
+
+                    return '<div class=\"fred-select-option\">' +
+                      '<div class=\"fred-select-header\">' +
+                        '<span class=\"badge bg-primary fred-id-badge\">' + escape(id) + '</span>' +
+                        saBadge +
+                        '<span class=\"fred-title\">' + escape(title) + '</span>' +
+                      '</div>' +
+                      '<div class=\"fred-description\">Frequency: ' + escape(freqText) + '</div>' +
+                    '</div>';
+                  },
+                  item: function(item, escape) {
+                    return '<div>' + escape(item.label.split(' - ')[0]) + '</div>';
+                  }
+                }")
+              ),
+              selected = if (!is.null(series_id)) series_id else character(0),
+              server = TRUE
+            )
+          } else {
+            # No data available - show empty selectize with message
+            updateSelectizeInput(
+              session,
+              "series_id",
+              choices = c("No series available - check FRED API key" = ""),
+              server = FALSE
+            )
+          }
         })
 
         # Check if API key is set
@@ -353,6 +428,7 @@ new_fred_block <- function(
           }),
           state = list(
             series_id = r_series_id,
+            tag = r_tag,
             observation_start = r_observation_start,
             observation_end = r_observation_end,
             frequency = r_frequency,
@@ -456,39 +532,58 @@ css_responsive_grid <- function() {
       margin-bottom: 5px;
     }
 
-    /* Selectize multi-column styling */
-    .fred-series-option {
-      display: grid;
-      grid-template-columns: 120px 1fr 100px;
-      gap: 10px;
+    /* FRED Series Selectize Styling - Badge + Title + Description */
+    .fred-select-option {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .fred-select-option:hover {
+      background-color: #f8f9fa;
+    }
+
+    .fred-select-header {
+      display: flex;
       align-items: center;
-      padding: 5px 0;
-      width: 100%;
+      gap: 8px;
+      margin-bottom: 4px;
     }
 
-    .fred-series-option .series-id {
+    .fred-id-badge {
+      font-size: 0.75rem;
       font-weight: 600;
-      color: #2c3e50;
+      padding: 2px 8px;
+      border-radius: 12px;
       font-family: monospace;
-      font-size: 0.9em;
+      flex-shrink: 0;
     }
 
-    .fred-series-option .series-title {
-      color: #34495e;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .fred-sa-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 10px;
+      flex-shrink: 0;
     }
 
-    .fred-series-option .series-freq {
-      color: #7f8c8d;
-      font-size: 0.85em;
-      text-align: right;
+    .fred-title {
+      font-weight: 500;
+      color: #2c3e50;
+      font-size: 0.95rem;
+      line-height: 1.3;
     }
 
-    /* Wider dropdown for multi-column display */
+    .fred-description {
+      font-size: 0.8rem;
+      color: #6c757d;
+      margin-left: 8px;
+      line-height: 1.2;
+    }
+
+    /* Wider dropdown for better readability */
     .selectize-dropdown {
-      min-width: 600px !important;
+      min-width: 500px !important;
+      max-width: 700px;
     }
     "
   ))
@@ -510,6 +605,8 @@ css_single_column <- function(block_name) {
   )))
 }
 
+#' @importFrom dplyr filter arrange desc collect
+#' @importFrom duckplyr read_parquet_duckdb
 #' @importFrom fredr fredr fredr_has_key
 #' @importFrom glue glue
 #' @importFrom htmltools tags HTML

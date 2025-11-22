@@ -10,7 +10,7 @@ pkgload::load_all()  # Load blockr.fredr from current directory
 # fredr::fredr_set_key("YOUR_FRED_API_KEY")
 # Or add to ~/.Renviron: FRED_API_KEY=YOUR_FRED_API_KEY
 
-# Simple demo: Create a FRED block and interact with the series selector
+# Option 1: Create a FRED block from scratch
 run_app(
   blocks = c(
     # Create FRED block with default series
@@ -22,6 +22,11 @@ run_app(
     new_dag_extension()
   )
 )
+
+# Option 2: Load dashboard from JSON file
+# After saving your dashboard using the Save button in the UI,
+# you can load it directly:
+# serve("path/to/your/saved_dashboard.json")
 
 # Features to test:
 # 1. Category checkboxes: Try checking/unchecking Global, Switzerland, US

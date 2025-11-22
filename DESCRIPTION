@@ -18,7 +18,8 @@ Imports:
     fredr,
     glue,
     htmltools,
-    shinyjs
+    shinyjs,
+    duckplyr
 Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
