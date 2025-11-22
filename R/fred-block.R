@@ -107,15 +107,33 @@ new_fred_block <- function(
                 )
               ),
 
-              # Series ID input
+              # Category filters
               div(
                 class = "block-input-wrapper",
-                textInput(
+                checkboxGroupInput(
+                  inputId = NS(id, "categories"),
+                  label = "Data Categories",
+                  choices = c(
+                    "Global Key Indicators" = "global",
+                    "Switzerland" = "switzerland",
+                    "United States" = "us"
+                  ),
+                  selected = c("global", "switzerland"),  # Default: Global + Switzerland
+                  inline = TRUE
+                )
+              ),
+
+              # Series selector (server-side selectize)
+              div(
+                class = "block-input-wrapper",
+                selectizeInput(
                   inputId = NS(id, "series_id"),
-                  label = "FRED Series ID",
-                  value = series_id,
+                  label = "Select Series",
+                  choices = NULL,  # Empty initially for server-side mode
                   width = "100%",
-                  placeholder = "e.g., UNRATE, GDP, CPIAUCSL"
+                  options = list(
+                    placeholder = "Search or select a series..."
+                  )
                 )
               ),
 
@@ -214,6 +232,56 @@ new_fred_block <- function(
 
         observeEvent(input$aggregation_method, {
           r_aggregation_method(input$aggregation_method)
+        })
+
+        # Combine series data based on selected categories
+        available_series <- reactive({
+          req(input$categories)
+
+          series_list <- list()
+
+          if ("global" %in% input$categories) {
+            series_list[[length(series_list) + 1]] <- fred_series_global
+          }
+          if ("switzerland" %in% input$categories) {
+            series_list[[length(series_list) + 1]] <- fred_series_switzerland
+          }
+          if ("us" %in% input$categories) {
+            series_list[[length(series_list) + 1]] <- fred_series_us
+          }
+
+          if (length(series_list) == 0) {
+            return(data.frame(id = character(), title = character(), frequency = character()))
+          }
+
+          combined <- do.call(rbind, series_list)
+          combined[!duplicated(combined$id), ]
+        })
+
+        # Update selectize choices when categories change (server-side mode)
+        observe({
+          # Get selected categories (default to global + switzerland if not set)
+          cats <- input$categories
+          if (is.null(cats)) {
+            cats <- c("global", "switzerland")
+          }
+
+          series_data <- available_series()
+
+          # Create choices list for selectize (ID - Title format)
+          choices <- setNames(
+            series_data$id,
+            paste0(series_data$id, " - ", series_data$title)
+          )
+
+          # Update with server-side selectize
+          updateSelectizeInput(
+            session,
+            "series_id",
+            choices = choices,
+            selected = if (!is.null(series_id)) series_id else character(0),
+            server = TRUE
+          )
         })
 
         # Check if API key is set
@@ -387,6 +455,41 @@ css_responsive_grid <- function() {
     .block-help-text p {
       margin-bottom: 5px;
     }
+
+    /* Selectize multi-column styling */
+    .fred-series-option {
+      display: grid;
+      grid-template-columns: 120px 1fr 100px;
+      gap: 10px;
+      align-items: center;
+      padding: 5px 0;
+      width: 100%;
+    }
+
+    .fred-series-option .series-id {
+      font-weight: 600;
+      color: #2c3e50;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+
+    .fred-series-option .series-title {
+      color: #34495e;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .fred-series-option .series-freq {
+      color: #7f8c8d;
+      font-size: 0.85em;
+      text-align: right;
+    }
+
+    /* Wider dropdown for multi-column display */
+    .selectize-dropdown {
+      min-width: 600px !important;
+    }
     "
   ))
 }
@@ -410,7 +513,7 @@ css_single_column <- function(block_name) {
 #' @importFrom fredr fredr fredr_has_key
 #' @importFrom glue glue
 #' @importFrom htmltools tags HTML
-#' @importFrom shiny NS dateRangeInput moduleServer observeEvent reactive reactiveVal renderUI tagList textInput req div p uiOutput selectInput conditionalPanel
+#' @importFrom shiny NS dateRangeInput moduleServer observeEvent reactive reactiveVal renderUI tagList req div p uiOutput selectInput conditionalPanel checkboxGroupInput selectizeInput updateSelectizeInput
 #' @importFrom shinyjs useShinyjs
 #' @importFrom utils packageName
 NULL
