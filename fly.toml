@@ -15,7 +15,7 @@ primary_region = 'fra'  # Frankfurt, Germany - closest to Switzerland
   force_https = true
   auto_stop_machines = 'stop'  # Stop when idle to save costs
   auto_start_machines = true   # Start when requested
-  min_machines_running = 0     # Can scale to zero when idle
+  min_machines_running = 1     # Always keep 1 machine running
   processes = ['app']
 
   [[http_service.checks]]
@@ -26,7 +26,7 @@ primary_region = 'fra'  # Frankfurt, Germany - closest to Switzerland
     path = "/"
 
 [[vm]]
-  size = 'shared-cpu-1x'  # 1GB RAM, ~$5-7/month
+  size = 'shared-cpu-1x'  # Shared CPU, always running to avoid cold starts
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1

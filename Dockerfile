@@ -25,10 +25,10 @@ RUN R -e "install.packages(c('shiny', 'fredr', 'glue', 'htmltools', 'shinyjs', '
 
 # Install GitHub packages (blockr ecosystem) using pak - faster and more reliable
 # Note: blockr.dplyr@public excludes expression blocks for security
+# Only install needed packages (not umbrella 'blockr' which pulls in blockr.ai)
 RUN R -e "pak::pak(c( \
     'BristolMyersSquibb/blockr.core', \
     'BristolMyersSquibb/blockr.dplyr@public', \
-    'BristolMyersSquibb/blockr', \
     'BristolMyersSquibb/blockr.ggplot', \
     'BristolMyersSquibb/blockr.dock', \
     'BristolMyersSquibb/blockr.dag' \

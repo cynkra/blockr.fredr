@@ -1,6 +1,10 @@
-# blockr.fredr Dashboard for shinyapps.io
+# blockr.fredr Dashboard for fly.io
 
-library(blockr)
+library(blockr.core)
+library(blockr.dplyr)
+library(blockr.ggplot)
+library(blockr.dock)
+library(blockr.dag)
 library(blockr.fredr)
 
 # Set FRED API key from environment
