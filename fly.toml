@@ -27,7 +27,7 @@ primary_region = 'fra'  # Frankfurt, Germany - closest to Switzerland
 
 [[vm]]
   size = 'shared-cpu-1x'  # Shared CPU, always running to avoid cold starts
-  memory = '1gb'
+  memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
 
