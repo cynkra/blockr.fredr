@@ -1,0 +1,39 @@
+# fly.toml - Fly.io configuration for blockr.fredr dashboard
+# Run `fly launch` to create the app, or `fly deploy` to deploy changes
+
+app = 'blockr-fredr-dashboard'  # Change this if needed
+primary_region = 'fra'  # Frankfurt, Germany - closest to Switzerland
+
+[build]
+
+[env]
+  # Secrets are automatically available as environment variables
+  # This explicit reference ensures FRED_API_KEY is passed to Shiny processes
+
+[http_service]
+  internal_port = 3838  # Shiny Server default port
+  force_https = true
+  auto_stop_machines = 'stop'  # Stop when idle to save costs
+  auto_start_machines = true   # Start when requested
+  min_machines_running = 0     # Can scale to zero when idle
+  processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = "30s"       # Give Shiny time to start
+    interval = "15s"
+    method = "GET"
+    timeout = "10s"
+    path = "/"
+
+[[vm]]
+  size = 'shared-cpu-1x'  # 1GB RAM, ~$5-7/month
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+# Uncomment if you want multiple machines for high availability
+# [[vm]]
+#   size = 'shared-cpu-1x'
+#   memory = '1gb'
+#   cpu_kind = 'shared'
+#   cpus = 1

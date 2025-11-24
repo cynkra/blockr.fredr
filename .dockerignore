@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# R
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Development files
+dev/
+tests/
+vignettes/
+docs/
+
+# Documentation
+*.md
+!deploy/README.md
+NEWS
+LICENSE
+
+# Deployment configs (not needed in image)
+deploy/setup-shinyapps.R
+deploy/setup-interactive.R
+deploy/deploy.R
+deploy/rsconnect/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Misc
+*.log
+tmp/
+temp/
